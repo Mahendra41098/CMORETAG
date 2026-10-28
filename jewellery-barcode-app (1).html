@@ -1,0 +1,1023 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Barcode Purchase"><meta name="theme-color" content="#8a2f52"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Jewellery Barcode Purchase</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Mulish:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: bill entry full width on top; settings + export left, register right; stacks on phone */
+:root{
+  --bg:#f6f4f7; --panel:#ffffff; --ink:#221d26; --muted:#6c6474; --line:#e3dee7;
+  --accent:#8a2f52; --accent-ink:#ffffff; --gold:#9a6f1f; --ok:#2f7a4f; --warn:#a34a1c;
+  --f-display:"Marcellus",Georgia,serif; --f-body:"Mulish",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#17141a; --panel:#211d25; --ink:#eee8f1; --muted:#a59cae; --line:#352f3b;
+  --accent:#d0789a; --accent-ink:#1a0f14; --gold:#d8b065; --ok:#6fc694; --warn:#e5946a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17141a; --panel:#211d25; --ink:#eee8f1; --muted:#a59cae; --line:#352f3b;
+  --accent:#d0789a; --accent-ink:#1a0f14; --gold:#d8b065; --ok:#6fc694; --warn:#e5946a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding-bottom:12px}
+h1{font-family:var(--f-display);font-weight:400;font-size:1.8rem;margin:0;text-wrap:balance}
+h1 span{color:var(--gold)}
+h2{font-family:var(--f-display);font-weight:400;font-size:1.2rem;margin:0}
+.sub{color:var(--muted);font-size:.86rem;margin:0}
+.grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+label{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;flex-direction:column;gap:5px}
+input,select{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 10px;width:100%;text-transform:none;letter-spacing:0}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.billhead{display:grid;grid-template-columns:repeat(3,minmax(0,200px));gap:12px}
+@media (max-width:560px){.billhead{grid-template-columns:1fr 1fr}}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;font-weight:700;border-radius:7px;padding:10px 14px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.small{padding:4px 9px;font-size:.8rem;font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.msg{font-size:.86rem;min-height:1.2em;margin:0;color:var(--ok)}
+.msg.err{color:var(--warn)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.on{background:var(--ok)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:7px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.mono{font-family:var(--f-mono);font-size:.82rem}
+td.bc{font-family:var(--f-mono);font-size:.82rem;color:var(--gold)}
+tr.first td{border-top:2px solid var(--line)}
+.lines td{padding:5px 4px;vertical-align:middle}
+.lines input{padding:7px 8px;min-width:76px}
+.lines .ino{font-weight:700;display:inline-block;min-width:24px;text-align:center}
+.lines .pv{font-family:var(--f-mono);font-size:.8rem;color:var(--gold)}
+.totals{display:flex;flex-wrap:wrap;gap:18px;font-size:.88rem;color:var(--muted)}
+.totals b{color:var(--ink);font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
+.stat b{display:block;font-family:var(--f-display);font-weight:400;font-size:1.4rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat span{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.empty{color:var(--muted);padding:24px 6px;text-align:center;white-space:normal}
+textarea{font:inherit;font-family:var(--f-mono);font-size:.88rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 10px;width:100%;resize:vertical;text-transform:none;letter-spacing:0}
+.filebtn{display:inline-flex;flex-direction:row;align-items:center;border:1px solid var(--line);border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:700;background:var(--panel)}
+.filebtn:focus-within{outline:2px solid var(--accent)}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.paste{border:1px dashed var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.hhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.vstack{display:flex;flex-direction:column;gap:14px}
+.gone td{text-decoration:line-through;color:var(--muted)}
+.gone input{opacity:.45}
+button.danger{border-color:var(--warn);color:var(--warn)}
+.chg{margin:0;padding-left:18px;font-size:.86rem;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.chg b{color:var(--ink);font-weight:600}
+.warnbox{border:1px solid var(--warn);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:.86rem}
+h3{font-family:var(--f-display);font-weight:400;font-size:1.05rem;margin:0}
+.done{border:1px solid var(--ok);border-radius:8px;padding:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Jewellery <span>Barcode</span> Purchase</h1>
+    <span class="status"><span class="dot" id="dot"></span><span id="saveState">Connecting…</span></span>
+  </header>
+
+  <form class="panel" id="bill" autocomplete="off">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+      <h2>Purchase bill entry</h2>
+      <p class="sub">Party, bill no and date once, then one row per item.</p>
+    </div>
+    <div class="billhead">
+      <label>Party number
+        <input id="party" required placeholder="e.g. 12" inputmode="numeric">
+      </label>
+      <label>Bill no
+        <input id="billNo" placeholder="e.g. 458">
+      </label>
+      <label>Bill date
+        <input id="date" type="date" required>
+      </label>
+    </div>
+    <div class="billhead">
+      <label>Bill shows
+        <select id="rateMode">
+          <option value="rate">Purchase rate</option>
+          <option value="code">Item code × number</option>
+        </select>
+      </label>
+      <label id="multWrap" hidden>Multiply code by
+        <input id="mult" type="number" min="0" step="any" value="10">
+      </label>
+      <label>MRP
+        <select id="mrpMode">
+          <option value="manual">Type by hand</option>
+          <option value="2">Auto: purchase × 2</option>
+          <option value="2.5">Auto: purchase × 2.5</option>
+          <option value="custom">Auto: purchase × my number</option>
+        </select>
+      </label>
+      <label id="mrpMultWrap" hidden>MRP multiplier
+        <input id="mrpMult" type="number" min="0" step="any" value="2.2">
+      </label>
+      <label>Code: purchase ÷
+        <input id="billDiv" type="number" min="0" step="any" value="5">
+      </label>
+    </div>
+    <div class="tablewrap">
+      <table class="lines">
+        <thead><tr><th>Item</th><th id="rateHead">Purchase rate</th><th class="pcol" hidden>Purchase</th><th>Qty</th><th>MRP</th><th>Code</th><th>D.No</th><th>Barcode No</th><th></th></tr></thead>
+        <tbody id="lines"></tbody>
+      </table>
+    </div>
+    <div class="btns">
+      <button type="button" id="pasteToggle">Paste from Excel</button>
+      <button type="button" id="addLine">+ Add item</button>
+      <button type="button" id="add5">+ Add 5 items</button>
+      <span class="totals"><span>Items <b id="tItems">0</b></span><span>Pieces <b id="tPieces">0</b></span><span>Purchase value <b id="tValue">₹0</b></span></span>
+    </div>
+    <div class="paste" id="pasteBox" hidden>
+      <label>Paste rows from Excel, Sheets or WhatsApp
+        <textarea id="pasteText" rows="6" placeholder="rate&#9;qty&#9;mrp&#10;1800&#9;1&#9;3975&#10;1425&#9;1&#9;3195&#10;650&#9;2"></textarea>
+      </label>
+      <p class="sub">One item per line, in the order rate (or item code), qty, MRP. Qty and MRP can be left out. A header row with names like rate, qty, mrp is read by name, so you can paste your full table. Columns can be split by tab, comma or space.</p>
+      <div class="btns">
+        <button class="primary" type="button" id="pasteApply">Fill bill rows</button>
+        <label style="flex-direction:row;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:.88rem;font-weight:600"><input type="checkbox" id="pasteReplace" checked style="width:auto"> Replace current rows</label>
+      </div>
+      <p class="msg" id="pmsg" aria-live="polite"></p>
+    </div>
+    <div class="btns">
+      <button class="primary" type="submit" id="saveBtn">Save bill &amp; create barcodes</button>
+      <button type="button" id="resetBill">Clear rows</button>
+    </div>
+    <p class="msg" id="msg" aria-live="polite"></p>
+    <div class="done" id="done" hidden>
+      <span id="doneText"></span>
+      <button class="primary" type="button" id="dlBill">Download this bill in Excel</button>
+    </div>
+  </form>
+
+  <section class="panel" id="history">
+    <div class="vstack" id="hList">
+      <div class="hhead">
+        <h2>Bill history</h2>
+        <input id="hSearch" placeholder="Search party, bill no, code, barcode" style="max-width:290px">
+      </div>
+      <p class="sub">Every saved bill. Open one to see its items, change rate, qty or MRP, add or remove items, and download it again.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Date</th><th>Party</th><th>Bill</th><th>Items</th><th>Pieces</th><th>Purchase</th><th>D.No</th><th></th></tr></thead>
+          <tbody id="hRows"><tr><td colspan="8" class="empty">Loading saved bills…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="btns"><button type="button" id="hMore" hidden>Show more bills</button></div>
+      <p class="msg" id="hmsg" aria-live="polite"></p>
+    </div>
+
+    <div class="vstack" id="hEdit" hidden>
+      <div class="hhead">
+        <h2 id="edTitle">Bill</h2>
+        <div class="btns">
+          <button type="button" id="edDl">Download Excel</button>
+          <button type="button" id="edClose">Close</button>
+        </div>
+      </div>
+      <div class="billhead">
+        <label>Party number <input id="edParty" inputmode="numeric"></label>
+        <label>Bill no <input id="edBill"></label>
+        <label>Bill date <input id="edDate" type="date"></label>
+        <label>Code: purchase ÷ <input id="edDiv" type="number" min="0" step="any"></label>
+      </div>
+      <p class="warnbox" id="edWarn" hidden>Changing the party or date renumbers the items and changes their barcodes and codes. Labels already printed will no longer match.</p>
+      <div class="tablewrap">
+        <table class="lines">
+          <thead><tr><th>Item</th><th>Item code</th><th>Purchase rate</th><th>Qty</th><th>MRP</th><th>Code</th><th>D.No</th><th>Barcode</th><th></th></tr></thead>
+          <tbody id="edRows"></tbody>
+        </table>
+      </div>
+      <div class="btns">
+        <button type="button" id="edAdd">+ Add item</button>
+        <button type="button" id="edAuto">Auto MRP for all rows</button>
+        <span class="totals"><span>Items <b id="edItems">0</b></span><span>Pieces <b id="edPcs">0</b></span><span>Purchase value <b id="edVal">₹0</b></span></span>
+      </div>
+      <p class="sub">Changing an item code recalculates the purchase rate (item code × multiplier). Item numbers and D.Nos stay the same when you edit, so printed labels still match.</p>
+      <div class="btns">
+        <button class="primary" type="button" id="edSave">Save changes</button>
+        <button class="danger" type="button" id="edDelete">Delete this bill</button>
+      </div>
+      <p class="msg" id="edMsg" aria-live="polite"></p>
+      <h3>Change history</h3>
+      <ul class="chg" id="edLog"></ul>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel">
+        <h2>Settings</h2>
+        <p class="sub">Set the next design number to continue from your old register. New bills start from here.</p>
+        <div class="row">
+          <label>Next D.No
+            <input id="setDno" type="number" min="1">
+          </label>
+          <label>D.No prefix
+            <input id="setPrefix" placeholder="none" maxlength="6">
+          </label>
+        </div>
+        <p class="sub">Example next D.No: <b id="dnoExample" style="font-family:var(--f-mono);color:var(--gold)">—</b></p>
+        <div class="row">
+          <label>Code: divide purchase by
+            <input id="setDiv" type="number" min="0" step="any" value="5">
+          </label>
+          <label>Code separator
+            <select id="setSep">
+              <option value="-">75-360-1</option>
+              <option value="/">75/360/1</option>
+              <option value=" ">75 360 1</option>
+              <option value="">753601</option>
+            </select>
+          </label>
+        </div>
+        <label>Different divide for some parties
+          <input id="setPartyDiv" placeholder="e.g. 75 = 4, 12 = 6">
+        </label>
+        <p class="sub">Parties not listed use the default divide. You can still change it on one bill.</p>
+        <label>MRP price endings
+          <input id="setEnds" placeholder="25, 45, 75, 95">
+        </label>
+        <p class="sub">Auto MRP rounds up to the next price with these endings. With 25, 45, 75, 95: 990 → 995, 1107 → 1125.</p>
+        <button type="button" id="saveSettings">Save settings</button>
+        <p class="msg" id="smsg" aria-live="polite"></p>
+        <div class="btns" style="border-top:1px solid var(--line);padding-top:12px">
+          <button type="button" id="backupBtn">Backup all data</button>
+          <label class="filebtn" style="text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--ink)">
+            <span>Restore backup</span><input type="file" id="restoreFile" accept=".json,application/json" hidden>
+          </label>
+        </div>
+        <p class="sub">Backup saves every entry and setting in one file. Restore it on another device or after clearing the browser.</p>
+        <div id="fbBox" hidden style="border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:10px">
+          <h2>Online saving (Firebase)</h2>
+          <p class="sub">Paste the firebaseConfig from your Firebase project. Bills, settings and the D.No counter then save online and sync on every device. A copy also stays in this browser.</p>
+          <label>Firebase config
+            <textarea id="fbConfig" rows="5" placeholder="const firebaseConfig = {&#10;  apiKey: &quot;...&quot;,&#10;  authDomain: &quot;...&quot;,&#10;  projectId: &quot;...&quot;,&#10;  appId: &quot;...&quot;&#10;};"></textarea>
+          </label>
+          <div class="btns">
+            <button class="primary" type="button" id="fbConnect">Connect</button>
+            <button type="button" id="fbDisconnect" hidden>Disconnect</button>
+          </div>
+          <p class="msg" id="fbmsg" aria-live="polite"></p>
+        </div>
+        <p class="msg" id="bmsg" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Export to Excel</h2>
+        <label>Which entries
+          <select id="range">
+            <option value="today">Today's bills</option>
+            <option value="all">All entries</option>
+            <option value="party">One party</option>
+            <option value="bill">One bill no</option>
+          </select>
+        </label>
+        <label id="pickWrap" hidden><span id="pickLabel">Party number</span>
+          <input id="pick">
+        </label>
+        <button type="button" id="exportBtn">Download Excel (.xlsx)</button>
+        <p class="sub">Sheet 1: one row per item (rate, qty, p/5, code, mrp, barcode, D.No). Sheet 2: the same rows repeated per piece for label printing.</p>
+        <p class="msg" id="xmsg" aria-live="polite"></p>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px">
+        <h2>Purchase register</h2>
+        <input id="search" placeholder="Search party, bill, code, D.No, barcode" style="max-width:290px">
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="sEntries">0</b><span>Items</span></div>
+        <div class="stat"><b id="sPieces">0</b><span>Pieces</span></div>
+        <div class="stat"><b id="sNext">—</b><span>Next D.No</span></div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Date</th><th>Party</th><th>Bill</th><th>Item</th><th>Rate</th><th>Qty</th><th>Code</th><th>D.No</th><th>Barcode</th><th>MRP</th><th></th></tr></thead>
+          <tbody id="rows"><tr><td colspan="11" class="empty">Loading saved entries…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const DNO_START = 1001;
+const LKEY = 'jewel-barcode-local-v3';
+let db=null, entries=[], meta={dno:DNO_START, serial:{}, prefix:'', div:5, sep:'-', partyDiv:{}}, mode='local', downloads=null, lastBill=[];
+
+const todayStr = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const ddmmyy = s => { const [y,m,d]=s.split('-'); return d+m+y.slice(2); };
+const fmtDate = s => { const [y,m,d]=s.split('-'); return d+'-'+m+'-'+y; };
+const clean = s => String(s).trim().toUpperCase().replace(/\s+/g,'');
+const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rateCode = (r, div=5) => { const v=Number(r)/(Number(div)||5); return Number.isInteger(v) ? String(v) : String(Math.round(v)); };
+/* item bought by code: 15-430-CODE-1, otherwise 15-430-1 */
+const codeOf = (party, rate, itemNo, div=5, sep='-', billCode='') => [party, rateCode(rate,div), clean(billCode||''), itemNo].filter(x=>x!=='').join(sep);
+const codeE = e => codeOf(e.party, e.rate, e.itemNo, e.div||5, e.sep ?? '-', e.billCode);
+const defDiv = () => Number(meta.div)||5;
+const sepNow = () => meta.sep ?? '-';
+const divFor = party => Number((meta.partyDiv||{})[party]) || defDiv();
+const billDiv = () => Number($('billDiv').value) || divFor(clean($('party').value));
+const barcodeOf = (party, date, itemNo) => party + ddmmyy(date) + String(itemNo).padStart(2,'0');
+const serialKey = (party, date) => party + '_' + ddmmyy(date);
+const dnoText = e => (e.dnoPrefix||'') + e.dno;
+const maxUsedDno = () => entries.reduce((m,e)=>Math.max(m,e.dno||0),0);
+const bcOf = e => barcodeOf(e.party,e.date,e.itemNo);
+function setState(t,on){ $('saveState').textContent=t; $('dot').classList.toggle('on',!!on); }
+function msg(el,t,err){ el.textContent=t; el.classList.toggle('err',!!err); }
+
+$('date').value = todayStr();
+
+/* ---------- bill item lines ---------- */
+let lineId=0;
+function firstItemNo(){
+  const p=clean($('party').value), d=$('date').value;
+  if(!p||!d) return 1;
+  return entries.filter(e=>e.party===p && e.date===d).reduce((m,e)=>Math.max(m,e.itemNo),0) + 1;
+}
+function addLine(focus, copyFrom){
+  const tr=document.createElement('tr'); const id=++lineId;
+  tr.innerHTML=`<td><span class="ino"></span></td>
+    <td><input id="rate${id}" class="rate" type="number" min="0" step="any" placeholder="595"></td>
+    <td class="pv ppur pcol"${rateMode()==='code'?'':' hidden'}>—</td>
+    <td><input id="qty${id}" class="qty" type="number" min="1" max="500" value="1" style="max-width:80px"></td>
+    <td><input id="mrp${id}" class="mrp" type="number" min="0" placeholder="₹"></td>
+    <td class="pv pcode">—</td><td class="pv pdno">—</td><td class="pv pbc">—</td>
+    <td><button class="small del" type="button" aria-label="Remove row">✕</button></td>`;
+  $('lines').appendChild(tr);
+  if(copyFrom){ tr.querySelector('.rate').value=copyFrom.rate; tr.querySelector('.mrp').value=copyFrom.mrp; }
+  refreshLines();
+  if(focus) tr.querySelector(copyFrom?'.qty':'.rate').focus();
+}
+/* ---------- purchase price + MRP rules ---------- */
+const rateMode = () => $('rateMode').value;
+function purchaseOf(raw){
+  if(raw==='') return '';
+  const n=Number(raw); if(!isFinite(n)) return '';
+  const v = rateMode()==='code' ? n*(Number($('mult').value)||1) : n;
+  return String(Math.round(v*100)/100);
+}
+function mrpFactor(){
+  const m=$('mrpMode').value;
+  if(m==='manual') return 0;
+  return m==='custom' ? (Number($('mrpMult').value)||0) : Number(m);
+}
+function endings(){ return (meta.endings&&meta.endings.length?meta.endings:[25,45,75,95]).slice().sort((a,b)=>a-b); }
+/* round UP to the next price ending in 25/45/75/95: 990 → 995, 1107 → 1125 */
+function roundMrp(x){
+  const ends=endings(); x=Math.ceil(x);
+  for(let h=Math.floor(x/100);;h++){ for(const e of ends){ const v=h*100+e; if(v>=x) return v; } }
+}
+function autoMrp(purchase){ const f=mrpFactor(); return (f&&purchase!=='') ? String(roundMrp(Number(purchase)*f)) : ''; }
+
+function readLines(){
+  return [...$('lines').querySelectorAll('tr')].map(tr=>({
+    tr, raw:tr.querySelector('.rate').value.trim(), rate:purchaseOf(tr.querySelector('.rate').value.trim()),
+    qty:Math.max(1,Math.min(500,parseInt(tr.querySelector('.qty').value,10)||1)),
+    mrp:tr.querySelector('.mrp').value.trim()
+  }));
+}
+function refreshLines(){
+  const p=clean($('party').value), d=$('date').value;
+  let itemNo=firstItemNo(), dno=meta.dno, items=0, pcs=0, val=0;
+  readLines().forEach(l=>{
+    l.tr.querySelector('.ino').textContent=itemNo;
+    l.tr.querySelector('.ppur').textContent = l.rate || '—';
+    const mi=l.tr.querySelector('.mrp');
+    if(mrpFactor() && mi.dataset.manual!=='1'){ mi.value=autoMrp(l.rate); l.mrp=mi.value; }
+    if(l.rate){
+      l.tr.querySelector('.pcode').textContent = p ? codeOf(p,l.rate,itemNo,billDiv(),sepNow(), rateMode()==='code'?l.raw:'') : '—';
+      l.tr.querySelector('.pdno').textContent = (meta.prefix||'') + dno;
+      l.tr.querySelector('.pbc').textContent = (p&&d) ? barcodeOf(p,d,itemNo) : '—';
+      dno++; items++; pcs+=l.qty; val+=Number(l.rate)*l.qty;
+    } else { ['.pcode','.pdno','.pbc'].forEach(c=>l.tr.querySelector(c).textContent='—'); }
+    itemNo++;
+  });
+  $('tItems').textContent=items; $('tPieces').textContent=pcs; $('tValue').textContent='₹'+val.toLocaleString('en-IN');
+}
+$('lines').addEventListener('input',e=>{
+  if(e.target.classList.contains('mrp')) e.target.dataset.manual = e.target.value ? '1' : '';
+  refreshLines();
+});
+/* bill-level options, remembered on this device */
+const OKEY='jewel-barcode-opts';
+function applyOpts(){
+  const code=rateMode()==='code';
+  $('multWrap').hidden=!code; $('rateHead').textContent = code ? 'Item code' : 'Purchase rate';
+  document.querySelectorAll('.pcol').forEach(el=>el.hidden=!code);
+  $('mrpMultWrap').hidden=$('mrpMode').value!=='custom';
+  try{ localStorage.setItem(OKEY, JSON.stringify({rateMode:rateMode(), mult:$('mult').value, mrpMode:$('mrpMode').value, mrpMult:$('mrpMult').value})); }catch(e){}
+  refreshLines();
+}
+try{ const o=JSON.parse(localStorage.getItem(OKEY)||'null'); if(o){ $('rateMode').value=o.rateMode||'rate'; $('mult').value=o.mult||10; $('mrpMode').value=o.mrpMode||'manual'; $('mrpMult').value=o.mrpMult||2.2; } }catch(e){}
+['rateMode','mult','mrpMode','mrpMult'].forEach(id=>$(id).addEventListener('input',applyOpts));
+/* bill divide follows the party's setting until you type your own for this bill */
+$('billDiv').addEventListener('input',()=>{ $('billDiv').dataset.manual = $('billDiv').value ? '1' : ''; refreshLines(); });
+$('party').addEventListener('input',()=>{ if(!$('billDiv').dataset.manual) $('billDiv').value=divFor(clean($('party').value)); refreshLines(); });
+$('lines').addEventListener('click',e=>{
+  const b=e.target.closest('button.del'); if(!b) return;
+  b.closest('tr').remove();
+  if(!$('lines').children.length) addLine();
+  refreshLines();
+});
+/* Enter in the last row's MRP adds a new row with the same rate + MRP */
+$('lines').addEventListener('keydown',e=>{
+  if(e.key==='Enter' && e.target.classList.contains('mrp') && e.target.closest('tr')===$('lines').lastElementChild){
+    e.preventDefault(); addLine(true);
+  }
+});
+$('addLine').addEventListener('click',()=>addLine(true));
+$('add5').addEventListener('click',()=>{ for(let i=0;i<5;i++) addLine(false); });
+$('resetBill').addEventListener('click',()=>{ $('lines').innerHTML=''; for(let i=0;i<3;i++) addLine(false); msg($('msg'),''); });
+['party','date','billNo'].forEach(id=>$(id).addEventListener('input',refreshLines));
+
+/* ---------- settings ---------- */
+function showSettings(){
+  if(document.activeElement!==$('setDno')) $('setDno').value=meta.dno;
+  if(document.activeElement!==$('setPrefix')) $('setPrefix').value=meta.prefix||'';
+  if(document.activeElement!==$('setEnds')) $('setEnds').value=endings().join(', ');
+  if(document.activeElement!==$('setDiv')) $('setDiv').value=defDiv();
+  if(document.activeElement!==$('setSep')) $('setSep').value=sepNow();
+  if(document.activeElement!==$('setPartyDiv')) $('setPartyDiv').value=Object.entries(meta.partyDiv||{}).map(([k,v])=>k+' = '+v).join(', ');
+  if(!$('billDiv').dataset.manual) $('billDiv').value=divFor(clean($('party').value));
+  updateExample();
+}
+function updateExample(){ $('dnoExample').textContent=clean($('setPrefix').value)+($('setDno').value||meta.dno); }
+['setDno','setPrefix'].forEach(id=>$(id).addEventListener('input',updateExample));
+$('saveSettings').addEventListener('click', async ()=>{
+  const n=parseInt($('setDno').value,10), prefix=clean($('setPrefix').value).replace(/[^A-Z0-9\-\/]/g,'');
+  if(!n||n<1){ msg($('smsg'),'Enter a valid next D.No.',true); return; }
+  const ends=[...new Set($('setEnds').value.split(/[,\s]+/).map(x=>parseInt(x,10)).filter(x=>x>=0&&x<=99))].sort((a,b)=>a-b);
+  if(!ends.length){ msg($('smsg'),'Enter at least one price ending between 0 and 99, like 25, 45, 75, 95.',true); return; }
+  const sdiv=Number($('setDiv').value);
+  if(!(sdiv>0)){ msg($('smsg'),'Enter a divide number greater than 0, like 5.',true); return; }
+  const pdiv={}; let bad='';
+  $('setPartyDiv').value.split(/[,\n]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>{ const m=x.match(/^([A-Za-z0-9]+)\s*[=:]\s*([0-9.]+)$/); if(m && Number(m[2])>0) pdiv[clean(m[1])]=Number(m[2]); else bad=x; });
+  if(bad){ msg($('smsg'),`Could not read "${bad}". Write party = number, like 75 = 4.`,true); return; }
+  const used=maxUsedDno();
+  if(n<=used && n!==meta.dno){ msg($('smsg'),`D.No ${used} is already used here. Choose ${used+1} or higher so numbers stay unique.`,true); return; }
+  $('saveSettings').disabled=true;
+  try{
+    await withCounters(cur=>({...cur, dno:n, prefix, endings:ends, div:sdiv, sep:$('setSep').value, partyDiv:pdiv}));
+    msg($('smsg'),`Saved. Next item gets D.No ${prefix}${n}.`);
+  }catch(e){ msg($('smsg'),(e&&e.message)||'Could not save settings. Try again.',true); }
+  finally{ $('saveSettings').disabled=false; }
+});
+
+/* ---------- local fallback ---------- */
+function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(LKEY)||'null'); if(s){ entries=s.entries||[]; meta=Object.assign(meta,s.meta||{}); } }catch(e){} }
+function saveLocal(){ try{ localStorage.setItem(LKEY, JSON.stringify({entries,meta})); }catch(e){} }
+
+/* ---------- counters: read-modify-write under a short lease ---------- */
+async function withCounters(fn){
+  if(mode==='local'){ const r=fn({...meta, serial:{...meta.serial}}); const next=r.next||r; meta={...meta,...next}; saveLocal(); render(); return r.out; }
+  const ref=db.doc('meta/counters'), holder='tab-'+Math.random().toString(36).slice(2);
+  for(let t=0;t<8;t++){
+    const lease=await ref.acquire({holder, ttlMs:8000});
+    if(lease.acquired){
+      const snap=await ref.get();
+      const cur=snap.exists?snap.data():{};
+      const base={...cur, dno:cur.dno||DNO_START, serial:Object.assign({},cur.serial||{}), prefix:cur.prefix||'', endings:cur.endings||[25,45,75,95], div:cur.div||5, sep:cur.sep ?? '-', partyDiv:cur.partyDiv||{}};
+      const r=fn(base); const next=r.next||r;
+      await ref.set({...base, ...next});
+      return r.out;
+    }
+    await new Promise(r=>setTimeout(r,400+Math.random()*400));
+  }
+  throw {message:'Another device is saving right now. Try again.'};
+}
+
+/* ---------- register ---------- */
+function render(){
+  const q=clean($('search').value);
+  const list=entries.slice().sort((a,b)=> b.date.localeCompare(a.date) || a.party.localeCompare(b.party) || String(a.billNo||'').localeCompare(String(b.billNo||'')) || a.itemNo-b.itemNo)
+    .filter(e=> !q || e.party.includes(q) || String(e.billNo||'').includes(q) || codeE(e).includes(q) || dnoText(e).includes(q) || bcOf(e).includes(q));
+  const tb=$('rows');
+  if(!entries.length) tb.innerHTML='<tr><td colspan="11" class="empty">No items yet. Save a bill above and each item appears here with its code, D.No and barcode.</td></tr>';
+  else if(!list.length) tb.innerHTML='<tr><td colspan="11" class="empty">Nothing matches that search.</td></tr>';
+  else tb.innerHTML=list.map(e=>`<tr>
+      <td>${fmtDate(e.date)}</td><td class="mono">${esc(e.party)}</td><td class="mono">${esc(e.billNo||'—')}</td>
+      <td>${e.itemNo}</td><td>${esc(e.rate)}</td><td>${e.qty}</td>
+      <td class="mono">${esc(codeE(e))}</td><td class="mono">${esc(dnoText(e))}</td>
+      <td class="bc">${bcOf(e)}</td><td>${e.mrp?'₹'+esc(e.mrp):'—'}</td>
+      <td><button class="small" type="button" data-del="${esc(e.id)}">Delete</button></td></tr>`).join('');
+  $('sEntries').textContent=entries.length;
+  $('sPieces').textContent=entries.reduce((s,e)=>s+e.qty,0);
+  $('sNext').textContent=(meta.prefix||'')+meta.dno;
+  showSettings();
+  renderHistory();
+  refreshLines();
+}
+
+/* ---------- save bill ---------- */
+$('bill').addEventListener('submit', async ev=>{
+  ev.preventDefault();
+  const party=clean($('party').value), date=$('date').value||todayStr(), billNo=clean($('billNo').value);
+  const lines=readLines().filter(l=>l.rate);
+  if(!party){ msg($('msg'),'Enter the party number.',true); $('party').focus(); return; }
+  if(!lines.length){ msg($('msg'),'Enter the purchase rate for at least one item.',true); return; }
+  const div=billDiv(), sep=sepNow();
+  const odd=lines.filter(l=>Number(l.rate)%div!==0).map(l=>l.rate);
+  $('saveBtn').disabled=true; $('done').hidden=true;
+  try{
+    const start=firstItemNo(), key=serialKey(party,date);
+    const alloc=await withCounters(cur=>{
+      let dno=cur.dno; let s=(cur.serial[key]||0)+1; const out=[];
+      lines.forEach(l=>{ out.push({dno, serialStart:s, prefix:cur.prefix||''}); dno++; s+=l.qty; });
+      cur.serial[key]=s-1;
+      return {out, next:{...cur, dno, serial:cur.serial}};
+    });
+    const now=new Date().toISOString();
+    const bill=lines.map((l,i)=>{
+      const itemNo=start+i;
+      return {id:'d'+alloc[i].dno, party, billNo, date, rate:l.rate, billCode: rateMode()==='code' ? l.raw : '', mult: rateMode()==='code' ? (Number($('mult').value)||1) : '', qty:l.qty, itemNo, mrp:l.mrp,
+        dno:alloc[i].dno, dnoPrefix:alloc[i].prefix, serialStart:alloc[i].serialStart, div, sep, code:codeOf(party,l.rate,itemNo,div,sep, rateMode()==='code'?l.raw:''), createdAt:now};
+    });
+    if(mode==='db'){ for(const e of bill) await db.collection('entries').doc(e.id).set(e); }
+    else { entries.push(...bill); saveLocal(); }
+    lastBill=bill; $('billDiv').dataset.manual=''; $('billDiv').value=divFor(party);
+    const pcs=bill.reduce((s,e)=>s+e.qty,0);
+    msg($('msg'), odd.length ? `Rate ${odd.join(', ')} not divisible by ${div}, rounded in the code.` : '', !!odd.length);
+    $('doneText').textContent=`Saved ${bill.length} item${bill.length>1?'s':''}, ${pcs} piece${pcs>1?'s':''} for party ${party}${billNo?' bill '+billNo:''}. D.No ${dnoText(bill[0])} to ${dnoText(bill[bill.length-1])}.`;
+    $('done').hidden=false;
+    $('lines').innerHTML=''; for(let i=0;i<3;i++) addLine(false);
+    render();
+  }catch(err){
+    msg($('msg'), err&&err.code==='quota_exceeded' ? 'Storage is full. Export to Excel and delete old entries.' : (err&&err.message)||'Could not save. Try again.', true);
+  }finally{ $('saveBtn').disabled=false; }
+});
+
+/* ---------- delete (tap twice) ---------- */
+let armed=null;
+$('rows').addEventListener('click', async ev=>{
+  const b=ev.target.closest('button[data-del]'); if(!b) return;
+  const id=b.dataset.del;
+  if(armed!==id){ armed=id; b.textContent='Tap to confirm'; setTimeout(()=>{ if(armed===id){armed=null;render();} },3000); return; }
+  armed=null;
+  try{
+    if(mode==='db') await db.collection('entries').doc(id).delete();
+    else { entries=entries.filter(e=>e.id!==id); saveLocal(); render(); }
+  }catch(e){ msg($('xmsg'),'Could not delete. Try again.',true); }
+});
+
+$('search').addEventListener('input',render);
+$('range').addEventListener('change',()=>{
+  const r=$('range').value; $('pickWrap').hidden=!(r==='party'||r==='bill');
+  $('pickLabel').textContent = r==='bill' ? 'Bill no' : 'Party number';
+});
+
+/* ---------- Excel ---------- */
+function buildWorkbook(list){
+  list=list.slice().sort((a,b)=> a.date.localeCompare(b.date) || a.party.localeCompare(b.party) || String(a.billNo||'').localeCompare(String(b.billNo||'')) || a.itemNo-b.itemNo);
+  const divs=[...new Set(list.map(e=>e.div||5))];
+  const pdHead = divs.length===1 ? 'p/'+divs[0] : 'p/div';
+  const row=e=>({'rate':Number(e.rate),'qty':e.qty,[pdHead]:Number(rateCode(e.rate,e.div||5)),'code':codeE(e),
+    'mrp':e.mrp?Number(e.mrp):'','barcode':bcOf(e),'d.no':dnoText(e),
+    'party':e.party,'bill no':e.billNo||'','date':fmtDate(e.date),'item code':e.billCode||''});
+  const items=list.map(row);
+  const labels=[]; list.forEach(e=>{ for(let i=0;i<e.qty;i++) labels.push(row(e)); });
+  const cols=[{wch:8},{wch:5},{wch:6},{wch:12},{wch:8},{wch:14},{wch:9},{wch:7},{wch:9},{wch:11},{wch:10}];
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.json_to_sheet(items); ws1['!cols']=cols;
+  const ws2=XLSX.utils.json_to_sheet(labels); ws2['!cols']=cols;
+  /* keep barcode as text so Excel does not show it in scientific format */
+  [ws1,ws2].forEach(ws=>{ const r=XLSX.utils.decode_range(ws['!ref']); for(let R=1;R<=r.e.r;R++){ const c=ws[XLSX.utils.encode_cell({r:R,c:5})]; if(c){ c.t='s'; c.v=String(c.v); } } });
+  XLSX.utils.book_append_sheet(wb,ws1,'Purchase');
+  XLSX.utils.book_append_sheet(wb,ws2,'Labels (1 per piece)');
+  return wb;
+}
+async function exportList(list, name, el){
+  if(!list.length){ msg(el,'No entries to export for that choice.',true); return; }
+  if(typeof XLSX==='undefined'){ msg(el,'Excel library did not load. Reload the page.',true); return; }
+  if(downloads){
+    const buf=XLSX.write(buildWorkbook(list),{bookType:'xlsx',type:'array'});
+    try{ await downloads.save({filename:name+'.xlsx', data:new Blob([buf])}); msg(el,'Excel file saved.'); }
+    catch(e){ msg(el, e&&e.code==='declined'?'Download cancelled.':'Could not save the file. Try again.', true); }
+    return;
+  }
+  if(standalone){ try{ XLSX.writeFile(buildWorkbook(list), name+'.xlsx'); msg(el,'Excel file saved to Downloads.'); }catch(e){ msg(el,'Could not save the file. Try again.',true); } return; }
+  msg(el,'Excel download is not available in this view.',true);
+}
+$('dlBill').addEventListener('click',()=>{
+  if(!lastBill.length) return;
+  const b=lastBill[0];
+  exportList(lastBill, `bill-party-${b.party}${b.billNo?'-'+b.billNo:''}-${fmtDate(b.date)}`, $('msg'));
+});
+$('exportBtn').addEventListener('click',()=>{
+  const r=$('range').value, v=clean($('pick').value);
+  if(r==='today') return exportList(entries.filter(e=>e.date===todayStr()), 'barcodes-'+fmtDate(todayStr()), $('xmsg'));
+  if(r==='party'){ if(!v){ msg($('xmsg'),'Enter the party number to export.',true); return; } return exportList(entries.filter(e=>e.party===v), 'barcodes-party-'+v, $('xmsg')); }
+  if(r==='bill'){ if(!v){ msg($('xmsg'),'Enter the bill no to export.',true); return; } return exportList(entries.filter(e=>(e.billNo||'')===v), 'barcodes-bill-'+v, $('xmsg')); }
+  exportList(entries, 'barcodes-all', $('xmsg'));
+});
+
+
+/* ---------- bill history + edit past bills ---------- */
+const billKey = e => e.party+'|'+e.date+'|'+(e.billNo||'');
+let histLimit=30, ed=null;
+const fmtTime = iso => { try{ return new Date(iso).toLocaleString('en-IN',{dateStyle:'short',timeStyle:'short'}); }catch(e){ return ''; } };
+
+async function putEntry(e){
+  if(mode==='db') await db.collection('entries').doc(e.id).set(e);
+  else { const i=entries.findIndex(x=>x.id===e.id); if(i>=0) entries[i]=e; else entries.push(e); saveLocal(); }
+}
+async function delEntry(id){
+  if(mode==='db') await db.collection('entries').doc(id).delete();
+  else { entries=entries.filter(x=>x.id!==id); saveLocal(); }
+}
+function groupBills(){
+  const m=new Map();
+  entries.forEach(e=>{
+    const k=billKey(e);
+    if(!m.has(k)) m.set(k,{key:k, party:e.party, date:e.date, billNo:e.billNo||'', items:[], created:''});
+    const g=m.get(k); g.items.push(e); if((e.createdAt||'')>g.created) g.created=e.createdAt||'';
+  });
+  return [...m.values()].sort((a,b)=> b.date.localeCompare(a.date) || b.created.localeCompare(a.created));
+}
+function renderHistory(){
+  if(ed) return;                                   /* editor open: leave it alone */
+  const q=clean($('hSearch').value), tb=$('hRows');
+  let bills=groupBills();
+  if(q) bills=bills.filter(g=> g.party.includes(q) || g.billNo.toUpperCase().includes(q) || g.items.some(e=>codeE(e).includes(q)||dnoText(e).includes(q)||bcOf(e).includes(q)));
+  if(!entries.length){ tb.innerHTML='<tr><td colspan="8" class="empty">No bills yet. Save a bill above and it appears here.</td></tr>'; $('hMore').hidden=true; return; }
+  if(!bills.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Nothing matches that search.</td></tr>'; $('hMore').hidden=true; return; }
+  const shown=bills.slice(0,histLimit);
+  tb.innerHTML=shown.map(g=>{
+    const pcs=g.items.reduce((s,e)=>s+e.qty,0), val=g.items.reduce((s,e)=>s+Number(e.rate)*e.qty,0);
+    const dn=g.items.map(e=>e.dno), lo=Math.min(...dn), hi=Math.max(...dn), pre=g.items[0].dnoPrefix||'';
+    return `<tr><td>${fmtDate(g.date)}</td><td class="mono">${esc(g.party)}</td><td class="mono">${esc(g.billNo||'—')}</td>
+      <td>${g.items.length}</td><td>${pcs}</td><td>₹${val.toLocaleString('en-IN')}</td><td class="mono">${esc(pre)}${lo}${hi>lo?'–'+hi:''}</td>
+      <td style="white-space:nowrap"><button class="small" type="button" data-open="${esc(g.key)}">Open</button> <button class="small" type="button" data-xl="${esc(g.key)}">Excel</button></td></tr>`;
+  }).join('');
+  $('hMore').hidden = bills.length<=shown.length;
+}
+$('hSearch').addEventListener('input',()=>{ histLimit=30; renderHistory(); });
+$('hMore').addEventListener('click',()=>{ histLimit+=30; renderHistory(); });
+$('hRows').addEventListener('click',ev=>{
+  const o=ev.target.closest('button[data-open]'), x=ev.target.closest('button[data-xl]');
+  if(o) openBill(o.dataset.open);
+  if(x){ const list=entries.filter(e=>billKey(e)===x.dataset.xl); if(list.length) exportList(list, billFileName(list[0]), $('hmsg')); }
+});
+const billFileName = e => `bill-party-${e.party}${e.billNo?'-'+e.billNo:''}-${fmtDate(e.date)}`;
+
+function buildDraft(items){
+  items=items.slice().sort((a,b)=>a.itemNo-b.itemNo);
+  const f=items[0];
+  return { key:billKey(f), party:f.party, billNo:f.billNo||'', date:f.date, div:f.div||5, div0:f.div||5, sep:f.sep ?? '-', party0:f.party, date0:f.date,
+    items: items.map(e=>({id:e.id, orig:e, itemNo:e.itemNo, billCode:e.billCode||'', rate:String(e.rate), qty:e.qty, mrp:String(e.mrp||''), removed:false, isNew:false})) };
+}
+function openBill(key){
+  const items=entries.filter(e=>billKey(e)===key);
+  if(!items.length) return;
+  ed=buildDraft(items); showEditor();
+}
+function showEditor(msgText){
+  $('hList').hidden=true; $('hEdit').hidden=false;
+  $('edTitle').textContent=`Bill ${ed.billNo||'(no bill no)'} · Party ${ed.party0} · ${fmtDate(ed.date0)}`;
+  $('edParty').value=ed.party; $('edBill').value=ed.billNo; $('edDate').value=ed.date; $('edDiv').value=ed.div;
+  msg($('edMsg'), msgText||'');
+  edRender(); edLog();
+  $('history').scrollIntoView({block:'start'});
+}
+function closeEditor(){ ed=null; $('hEdit').hidden=true; $('hList').hidden=false; renderHistory(); }
+
+/* item numbers each draft row will have once saved */
+function edNumbers(){
+  const p=clean(ed.party), mine=new Set(ed.items.filter(i=>!i.isNew).map(i=>i.id));
+  const others=entries.filter(e=>!mine.has(e.id) && e.party===p && e.date===ed.date).reduce((m,e)=>Math.max(m,e.itemNo),0);
+  const changed = p!==ed.party0 || ed.date!==ed.date0;
+  const nums=[]; let n=others;
+  if(changed){ ed.items.forEach(i=>{ if(i.removed) nums.push(i.itemNo); else { n++; nums.push(n); } }); }
+  else{
+    let mx=Math.max(others, ...ed.items.filter(i=>!i.isNew).map(i=>i.itemNo), 0);
+    ed.items.forEach(i=>{ if(i.isNew && !i.removed){ mx++; nums.push(mx); } else nums.push(i.itemNo); });
+  }
+  return nums;
+}
+function edRender(){
+  $('edRows').innerHTML=ed.items.map((it,i)=>`<tr data-i="${i}" class="${it.removed?'gone':''}">
+    <td><b class="ei-no"></b></td>
+    <td><input class="ei-code" value="${esc(it.billCode)}" placeholder="—" style="max-width:90px" ${it.removed?'disabled':''}></td>
+    <td><input class="ei-rate" type="number" min="0" step="any" value="${esc(it.rate)}" ${it.removed?'disabled':''}></td>
+    <td><input class="ei-qty" type="number" min="1" max="500" value="${it.qty}" style="max-width:80px" ${it.removed?'disabled':''}></td>
+    <td><input class="ei-mrp" type="number" min="0" value="${esc(it.mrp)}" placeholder="₹" ${it.removed?'disabled':''}></td>
+    <td class="pv ei-pcode"></td><td class="pv">${it.isNew?'new':esc((it.orig.dnoPrefix||'')+it.orig.dno)}</td><td class="pv ei-pbc"></td>
+    <td><button class="small" type="button" data-rm="${i}">${it.removed?'Undo':'✕'}</button></td></tr>`).join('');
+  edPreview();
+}
+function edPreview(){
+  const nums=edNumbers(), p=clean(ed.party), div=Number(ed.div)||5;
+  let items=0,pcs=0,val=0;
+  [...$('edRows').querySelectorAll('tr')].forEach((tr,i)=>{
+    const it=ed.items[i];
+    tr.querySelector('.ei-no').textContent=nums[i];
+    tr.querySelector('.ei-pcode').textContent = (it.rate&&p) ? codeOf(p,it.rate,nums[i],div,ed.sep,it.billCode) : '—';
+    tr.querySelector('.ei-pbc').textContent = (p&&ed.date) ? barcodeOf(p,ed.date,nums[i]) : '—';
+    if(!it.removed && it.rate){ items++; pcs+=it.qty; val+=Number(it.rate)*it.qty; }
+  });
+  $('edItems').textContent=items; $('edPcs').textContent=pcs; $('edVal').textContent='₹'+val.toLocaleString('en-IN');
+  $('edWarn').hidden = !(p!==ed.party0 || ed.date!==ed.date0);
+}
+function edLog(){
+  const rows=[]; let created='';
+  ed.items.forEach(it=>{ if(it.orig){ (it.orig.edits||[]).forEach(x=>rows.push(x)); if(!created || (it.orig.createdAt||'')<created) created=it.orig.createdAt||created; } });
+  rows.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  $('edLog').innerHTML = rows.slice(0,30).map(x=>`<li><b>${esc(fmtTime(x.at))}</b> ${esc(x.text)}</li>`).join('')
+    + (created?`<li><b>${esc(fmtTime(created))}</b> Bill first saved</li>`:'');
+}
+const itemMult = it => Number(it.orig&&it.orig.mult) || Number($('mult').value) || 0;
+$('edRows').addEventListener('input',ev=>{
+  const tr=ev.target.closest('tr'); if(!tr||!ed) return;
+  const it=ed.items[+tr.dataset.i], t=ev.target;
+  if(t.classList.contains('ei-code')){
+    it.billCode=clean(t.value);
+    const n=Number(t.value), m=itemMult(it);
+    if(isFinite(n)&&n>0&&m){ it.rate=String(Math.round(n*m*100)/100); tr.querySelector('.ei-rate').value=it.rate; }
+  }
+  else if(t.classList.contains('ei-rate')) it.rate=t.value.trim();
+  else if(t.classList.contains('ei-qty')) it.qty=Math.max(1,Math.min(500,parseInt(t.value,10)||1));
+  else if(t.classList.contains('ei-mrp')) it.mrp=t.value.trim();
+  edPreview();
+});
+$('edRows').addEventListener('click',ev=>{
+  const b=ev.target.closest('button[data-rm]'); if(!b||!ed) return;
+  const i=+b.dataset.rm, it=ed.items[i];
+  if(it.isNew) ed.items.splice(i,1); else it.removed=!it.removed;
+  edRender();
+});
+[['edParty','party'],['edBill','billNo'],['edDate','date'],['edDiv','div']].forEach(([id,k])=>$(id).addEventListener('input',()=>{ if(!ed) return; ed[k]=$(id).value; edPreview(); }));
+$('edAdd').addEventListener('click',()=>{
+  ed.items.push({id:null, orig:null, itemNo:0, billCode:'', rate:'', qty:1, mrp:'', removed:false, isNew:true});
+  edRender(); const r=$('edRows').lastElementChild.querySelector('.ei-rate'); r.focus();
+});
+$('edAuto').addEventListener('click',()=>{
+  if(!mrpFactor()){ msg($('edMsg'),'Pick an Auto MRP option in the MRP box of the bill entry first.',true); return; }
+  ed.items.forEach(it=>{ if(!it.removed && it.rate) it.mrp=autoMrp(it.rate); });
+  edRender(); msg($('edMsg'),'MRP recalculated. Save changes to keep it.');
+});
+$('edClose').addEventListener('click',closeEditor);
+$('edDl').addEventListener('click',()=>{
+  const list=ed.items.filter(i=>!i.isNew).map(i=>i.orig);
+  if(!list.length){ msg($('edMsg'),'Save the bill first.',true); return; }
+  exportList(list, billFileName(list[0]), $('edMsg'));
+});
+
+$('edSave').addEventListener('click', async ()=>{
+  const party=clean(ed.party), date=ed.date, billNo=clean(ed.billNo), div=Number(ed.div);
+  if(!party||!date){ msg($('edMsg'),'Enter the party number and date.',true); return; }
+  if(!(div>0)){ msg($('edMsg'),'Enter a divide number above 0, like 5.',true); return; }
+  const active=ed.items.filter(i=>!i.removed);
+  if(!active.length){ msg($('edMsg'),'Every item is removed. Use Delete this bill instead.',true); return; }
+  if(active.some(i=>!(Number(i.rate)>0))){ msg($('edMsg'),'Every item needs a purchase rate above 0.',true); return; }
+  $('edSave').disabled=true; msg($('edMsg'),'Saving…');
+  try{
+    const nums=edNumbers(), at=new Date().toISOString(), notes=[], saved=[];
+    const newCount=ed.items.filter(i=>i.isNew&&!i.removed).length;
+    let alloc=[];
+    if(newCount) alloc=await withCounters(cur=>{ let d=cur.dno; const out=[]; for(let k=0;k<newCount;k++) out.push({dno:d++, prefix:cur.prefix||''}); return {out, next:{...cur, dno:d, serial:cur.serial}}; });
+    let k=0;
+    for(let i=0;i<ed.items.length;i++){
+      const it=ed.items[i];
+      if(it.removed){
+        if(!it.isNew){ await delEntry(it.id); notes.push(`Item ${it.itemNo} removed (rate ${it.orig.rate}, qty ${it.orig.qty})`); }
+        continue;
+      }
+      if(it.isNew){
+        const a=alloc[k++];
+        const e={id:'d'+a.dno, party, billNo, date, rate:String(it.rate), billCode:it.billCode||'', mult: it.billCode ? (Number($('mult').value)||1) : '',
+          qty:it.qty, itemNo:nums[i], mrp:it.mrp||'', dno:a.dno, dnoPrefix:a.prefix, div, sep:ed.sep, createdAt:at, edits:[{at, text:`Item ${nums[i]} added`}]};
+        await putEntry(e); saved.push(e); continue;
+      }
+      const o=it.orig, n={...o, party, billNo, date, rate:String(it.rate), billCode:it.billCode||'', qty:it.qty, itemNo:nums[i], mrp:it.mrp||''};
+      if(div!==ed.div0) n.div=div;
+      const ch=[];
+      if(o.party!==n.party) ch.push(`party ${o.party} → ${n.party}`);
+      if(o.date!==n.date) ch.push(`date ${fmtDate(o.date)} → ${fmtDate(n.date)}`);
+      if((o.billNo||'')!==n.billNo) ch.push(`bill no ${o.billNo||'—'} → ${n.billNo||'—'}`);
+      if(o.itemNo!==n.itemNo) ch.push(`item no ${o.itemNo} → ${n.itemNo}`);
+      if((o.billCode||'')!==n.billCode) ch.push(`item code ${o.billCode||'—'} → ${n.billCode||'—'}`);
+      if(String(o.rate)!==n.rate) ch.push(`rate ${o.rate} → ${n.rate}`);
+      if(o.qty!==n.qty) ch.push(`qty ${o.qty} → ${n.qty}`);
+      if(String(o.mrp||'')!==n.mrp) ch.push(`MRP ${o.mrp||'—'} → ${n.mrp||'—'}`);
+      if((o.div||5)!==(n.div||5)) ch.push(`divide ${o.div||5} → ${n.div}`);
+      if(ch.length){ n.updatedAt=at; n.edits=[...(o.edits||[]),{at, text:`Item ${o.itemNo}: ${ch.join(', ')}`}].slice(-20); await putEntry(n); saved.push(n); }
+      else saved.push(o);
+    }
+    if(notes.length && saved.length){
+      const s0=saved[0], n={...s0, updatedAt:at, edits:[...(s0.edits||[]), ...notes.map(text=>({at,text}))].slice(-20)};
+      await putEntry(n); saved[0]=n;
+    }
+    ed=buildDraft(saved); showEditor('Saved.');
+    render();
+  }catch(err){
+    msg($('edMsg'), (err&&err.message)||'Could not save. Check your connection and try again.', true);
+  }finally{ $('edSave').disabled=false; }
+});
+
+let armedBill=false;
+$('edDelete').addEventListener('click', async ()=>{
+  const b=$('edDelete');
+  if(!armedBill){ armedBill=true; b.textContent='Tap again to delete the whole bill'; setTimeout(()=>{ armedBill=false; b.textContent='Delete this bill'; },3500); return; }
+  armedBill=false; b.textContent='Delete this bill';
+  try{
+    for(const it of ed.items) if(!it.isNew) await delEntry(it.id);
+    ed=null; $('hEdit').hidden=true; $('hList').hidden=false;
+    msg($('hmsg'),'Bill deleted.'); render();
+  }catch(e){ msg($('edMsg'),'Could not delete. Try again.',true); }
+});
+
+/* ---------- paste from Excel ---------- */
+const num = v => { const n=parseFloat(String(v).replace(/[₹,\s]/g,'')); return isFinite(n)?n:NaN; };
+$('pasteToggle').addEventListener('click',()=>{ $('pasteBox').hidden=!$('pasteBox').hidden; if(!$('pasteBox').hidden) $('pasteText').focus(); });
+$('pasteApply').addEventListener('click',()=>{
+  const lines=$('pasteText').value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){ msg($('pmsg'),'Paste at least one row first.',true); return; }
+  const split = l => l.includes('\t') ? l.split('\t') : l.includes(',') && !/\d,\d{3}/.test(l) ? l.split(',') : l.split(/\s+/);
+  let idx={rate:0, qty:1, mrp:2}, start=0;
+  const h=split(lines[0]).map(x=>x.trim().toLowerCase());
+  if(h.some(x=>isNaN(num(x)))){
+    const find=(...names)=>h.findIndex(x=>names.some(n=>x===n||x.replace(/[^a-z]/g,'')===n));
+    const r = rateMode()==='code' ? find('itemcode','code','rate','purchase') : find('rate','purchase','purchaserate','pur','itemcode');
+    idx={rate:r<0?0:r, qty:find('qty','quantity','pcs','pieces'), mrp:find('mrp','price','saleprice')};
+    start=1;
+  }
+  const rows=[]; let skipped=0;
+  lines.slice(start).forEach(l=>{
+    const c=split(l).map(x=>x.trim());
+    const rate=num(c[idx.rate]);
+    if(isNaN(rate)||rate<=0){ skipped++; return; }
+    const qty = idx.qty>=0 && !isNaN(num(c[idx.qty])) ? Math.max(1,Math.round(num(c[idx.qty]))) : 1;
+    const mrp = idx.mrp>=0 && !isNaN(num(c[idx.mrp])) ? String(num(c[idx.mrp])) : '';
+    rows.push({rate:String(rate), qty, mrp});
+  });
+  if(!rows.length){ msg($('pmsg'),'No rows with a number in the rate column. Check the pasted text.',true); return; }
+  if($('pasteReplace').checked) $('lines').innerHTML='';
+  else [...$('lines').querySelectorAll('tr')].forEach(tr=>{ if(!tr.querySelector('.rate').value) tr.remove(); });
+  rows.forEach(r=>{
+    addLine(false);
+    const tr=$('lines').lastElementChild;
+    tr.querySelector('.rate').value=r.rate; tr.querySelector('.qty').value=r.qty;
+    if(r.mrp){ tr.querySelector('.mrp').value=r.mrp; tr.querySelector('.mrp').dataset.manual='1'; }
+  });
+  refreshLines();
+  msg($('pmsg'),`Filled ${rows.length} row${rows.length>1?'s':''}${skipped?`, skipped ${skipped} line${skipped>1?'s':''} without a rate`:''}. Check the party and date, then save.`, !!skipped);
+  $('pasteText').value='';
+});
+
+/* ---------- backup / restore ---------- */
+$('backupBtn').addEventListener('click', async ()=>{
+  const json=JSON.stringify({app:'jewellery-barcode', version:1, savedAt:new Date().toISOString(), meta, entries}, null, 1);
+  const name='jewellery-barcode-backup-'+fmtDate(todayStr())+'.json';
+  try{
+    if(downloads) await downloads.save({filename:name, data:json});
+    else { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+    msg($('bmsg'),`Backup saved: ${entries.length} items.`);
+  }catch(e){ msg($('bmsg'), e&&e.code==='declined'?'Backup cancelled.':'Could not save the backup.',true); }
+});
+$('restoreFile').addEventListener('change', async ev=>{
+  const f=ev.target.files[0]; ev.target.value=''; if(!f) return;
+  try{
+    const data=JSON.parse(await f.text());
+    if(data.app!=='jewellery-barcode' || !Array.isArray(data.entries)) throw new Error('bad');
+    const have=new Set(entries.map(e=>e.id));
+    const add=data.entries.filter(e=>e && e.id && !have.has(e.id));
+    const all=[...entries,...add];
+    const nextDno=Math.max(meta.dno, (data.meta&&data.meta.dno)||0, all.reduce((m,e)=>Math.max(m,(e.dno||0)+1),0));
+    if(mode==='db'){
+      for(const e of add) await db.collection('entries').doc(e.id).set(e);
+      await withCounters(cur=>({...cur, ...(data.meta||{}), serial:cur.serial, dno:Math.max(cur.dno,nextDno)}));
+    } else {
+      entries=all; meta={...meta, ...(data.meta||{}), dno:nextDno}; saveLocal(); render();
+    }
+    msg($('bmsg'),`Restored ${add.length} new item${add.length===1?'':'s'}. ${data.entries.length-add.length} were already here.`);
+  }catch(e){ msg($('bmsg'),'That file is not a backup from this app.',true); }
+});
+
+/* ---------- start ---------- */
+let standalone=false; try{ standalone = window.self===window.top; }catch(e){ standalone=false; }
+loadLocal(); for(let i=0;i<3;i++) addLine(false); applyOpts(); render(); setState('Saved on this device only',false);
+
+(async ()=>{
+  try{ downloads=await window.claude?.use?.('downloads') ?? null; }catch(e){ downloads=null; }
+  const ok=!!downloads||standalone;
+  $('exportBtn').disabled=!ok; $('dlBill').disabled=!ok; $('backupBtn').disabled=!ok;
+  if(!ok) msg($('xmsg'),'Excel download is not available in this view.',true);
+})();
+
+(async ()=>{
+  let d=null;
+  try{ d=await window.claude?.use?.('db') ?? null; }catch(e){ d=null; }
+  if(!d) return;
+  db=d; mode='db'; setState('Saved online · syncs on all devices',true);
+  startSync();
+})();
+
+function startSync(){
+  db.doc('meta/counters').onSnapshot(s=>{ const c=s.exists?s.data():{}; meta={dno:c.dno||DNO_START, serial:c.serial||{}, prefix:c.prefix||'', endings:c.endings||[25,45,75,95], div:c.div||5, sep:c.sep ?? '-', partyDiv:c.partyDiv||{}}; saveLocal(); render(); },()=>{});
+  db.collection('entries').onSnapshot(s=>{ entries=s.docs.map(x=>x.data()); saveLocal(); render(); },
+    ()=>setState('Connection lost. Reload the page.',false));
+}
+
+/* ---------- Firebase for the standalone app ---------- */
+const FBKEY='jewel-barcode-fbconfig';
+const FBV='10.12.2';
+function parseFbConfig(t){
+  const o={}; ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{
+    const m=t.match(new RegExp('["\']?'+k+'["\']?\\s*:\\s*["\']([^"\']+)["\']')); if(m) o[k]=m[1]; });
+  return (o.apiKey&&o.projectId) ? o : null;
+}
+function loadScript(src){ return new Promise((ok,bad)=>{ const sc=document.createElement('script'); sc.src=src; sc.onload=ok; sc.onerror=()=>bad(new Error('load')); document.head.appendChild(sc); }); }
+/* small adapter so the rest of the app uses the same calls as the online page */
+function fbAdapter(fs){
+  const P=path=>path.replace(/^meta\//,'jb_meta/').replace(/^entries/,'jb_entries');
+  const wrapDoc=s=>({id:s.id, exists:s.exists, data:()=>s.data()});
+  const docRef=path=>{
+    const r=fs.doc(P(path));
+    return {
+      get:async()=>wrapDoc(await r.get()),
+      set:d=>r.set(d), delete:()=>r.delete(),
+      onSnapshot:(n,e)=>r.onSnapshot(s=>n(wrapDoc(s)),e),
+      acquire:async({holder,ttlMs})=>{
+        const lock=fs.doc(P(path)+'_lock');
+        const got=await fs.runTransaction(async tx=>{
+          const l=await tx.get(lock); const now=Date.now();
+          if(l.exists && l.data().holder!==holder && l.data().until>now) return false;
+          tx.set(lock,{holder, until:now+(ttlMs||8000)}); return true;
+        });
+        return {acquired:got};
+      }
+    };
+  };
+  return {
+    doc:docRef,
+    collection:path=>({
+      doc:id=>docRef(path+'/'+id),
+      onSnapshot:(n,e)=>fs.collection(P(path)).onSnapshot(s=>n({docs:s.docs.map(wrapDoc)}),e)
+    })
+  };
+}
+async function connectFirebase(cfg){
+  await loadScript(`https://www.gstatic.com/firebasejs/${FBV}/firebase-app-compat.js`);
+  await loadScript(`https://www.gstatic.com/firebasejs/${FBV}/firebase-firestore-compat.js`);
+  const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
+  const fs = app.firestore();
+  try{ await fs.enablePersistence({synchronizeTabs:true}); }catch(e){}
+  await fs.collection('jb_meta').limit(1).get();   /* fails here if rules block access */
+  return fbAdapter(fs);
+}
+async function moveLocalToFirebase(){
+  /* first connect: copy bills saved in this browser so nothing is lost */
+  const local=entries.slice(), m={...meta};
+  if(!local.length) return 0;
+  for(const e of local) await db.collection('entries').doc(e.id).set(e);
+  await withCounters(cur=>({...cur, ...m, serial:{...m.serial, ...cur.serial}, dno:Math.max(cur.dno||DNO_START, m.dno||DNO_START)}));
+  return local.length;
+}
+if(standalone){
+  $('fbBox').hidden=false;
+  let saved=null; try{ saved=JSON.parse(localStorage.getItem(FBKEY)||'null'); }catch(e){}
+  if(saved){
+    $('fbConfig').value=JSON.stringify(saved,null,1); $('fbDisconnect').hidden=false;
+    setState('Connecting to Firebase…',false);
+    connectFirebase(saved).then(a=>{ db=a; mode='db'; setState('Saved online (Firebase) · syncs on all devices',true); startSync(); })
+      .catch(()=>{ setState('Offline: saving in this browser',false); msg($('fbmsg'),'Could not reach Firebase. Bills save in this browser for now.',true); });
+  }
+  $('fbConnect').addEventListener('click', async ()=>{
+    const cfg=parseFbConfig($('fbConfig').value);
+    if(!cfg){ msg($('fbmsg'),'Could not find apiKey and projectId. Paste the whole firebaseConfig block.',true); return; }
+    $('fbConnect').disabled=true; msg($('fbmsg'),'Connecting…');
+    try{
+      const a=await connectFirebase(cfg);
+      db=a; mode='db';
+      const moved=await moveLocalToFirebase();
+      try{ localStorage.setItem(FBKEY, JSON.stringify(cfg)); }catch(e){}
+      startSync(); $('fbDisconnect').hidden=false;
+      setState('Saved online (Firebase) · syncs on all devices',true);
+      msg($('fbmsg'),`Connected to ${cfg.projectId}.${moved?` Copied ${moved} saved items online.`:''}`);
+    }catch(e){
+      msg($('fbmsg'), String(e&&e.code||'').includes('permission') ? 'Firebase refused access. In Firestore rules, allow read and write for jb_meta and jb_entries.' : 'Could not connect. Check the config and your internet.', true);
+    }finally{ $('fbConnect').disabled=false; }
+  });
+  $('fbDisconnect').addEventListener('click',()=>{
+    try{ localStorage.removeItem(FBKEY); }catch(e){}
+    msg($('fbmsg'),'Disconnected. Reloading…'); setTimeout(()=>location.reload(),600);
+  });
+}
+</script>
+
+</body></html>
